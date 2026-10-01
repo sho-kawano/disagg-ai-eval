@@ -1,0 +1,129 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb}
+\usepackage[margin=1in]{geometry}
+\newcommand{\bb}[1]{\boldsymbol{#1}}
+\newcommand{\given}{\,|\,}
+\title{Full Conditional Distributions}
+\author{}
+\date{}
+\begin{document}
+\maketitle
+
+Let $\bb z$ denote the vector of input estimates, $\bb D=\operatorname{diag}(d_1,\ldots,d_m)$ their sampling covariance matrix, and $\bb X$ the $m\times j$ covariate matrix.
+We write $data=\{\bb z,\bb X,\bb D\}$ and use $\cdots$ to denote the data and all remaining parameters in a full conditional.
+The distribution $IG(a,b)$ has density proportional to $x^{-(a+1)}\exp(-b/x)$.
+
+\section*{Fay--Herriot model}
+The model in \texttt{fh.R} is
+\begin{align*}
+ [\bb z\given\bb\beta,\bb v]
+ &\sim N_m(\bb X\bb\beta+\bb v,\bb D),\\
+ [\bb v\given\sigma^2]
+ &\sim N_m(\bb 0,\sigma^2\bb I_m),
+\end{align*}
+with $\pi(\bb\beta,\sigma^2)\propto 1$.
+The sampler updates $\bb\beta$, $\bb v$, and $\sigma^2$ separately.
+
+\paragraph{Full conditional distribution of $\bb\beta$.}
+The terms involving $\bb\beta$ are
+\[
+ \pi(\bb\beta\given\cdots)\propto
+ \exp\left\{-\frac12(\bb z-\bb X\bb\beta-\bb v)^\top
+ \bb D^{-1}(\bb z-\bb X\bb\beta-\bb v)\right\}.
+\]
+Completing the square gives
+\[
+ [\bb\beta\given\bb v,data]\sim
+ N_j\left(\bb P_\beta^{-1}\bb X^\top\bb D^{-1}(\bb z-\bb v),
+          \bb P_\beta^{-1}\right),
+ \qquad \bb P_\beta=\bb X^\top\bb D^{-1}\bb X.
+\]
+
+\paragraph{Full conditional distribution of $\bb v$.}
+Combining the likelihood and random-effect prior gives
+\[
+ [\bb v\given\bb\beta,\sigma^2,data]\sim
+ N_m\left(\bb P_v^{-1}\bb D^{-1}(\bb z-\bb X\bb\beta),
+          \bb P_v^{-1}\right),
+ \qquad \bb P_v=\bb D^{-1}+\frac{\bb I_m}{\sigma^2}.
+\]
+Since $\bb P_v$ is diagonal, the sampler draws the effects independently as
+\[
+ [v_i\given\bb\beta,\sigma^2,data]\sim
+ N\left(\frac{\sigma^2(z_i-\bb x_i^\top\bb\beta)}{\sigma^2+d_i},
+         \frac{\sigma^2d_i}{\sigma^2+d_i}\right).
+\]
+
+\paragraph{Full conditional distribution of $\sigma^2$.}
+Under the flat variance prior,
+\[
+ \pi(\sigma^2\given\cdots)\propto
+ (\sigma^2)^{-m/2}\exp\left\{-\frac{\bb v^\top\bb v}{2\sigma^2}\right\},
+\]
+so
+\[
+ [\sigma^2\given\bb v]\sim
+ IG\left(\frac m2-1,\frac{\bb v^\top\bb v}{2}\right).
+\]
+With the optional $IG(a,b)$ prior, this becomes $IG(m/2+a,\bb v^\top\bb v/2+b)$.
+
+\section*{Taxonomy smoothing}
+For \texttt{ts.R}, let $\bb Z_r$ be the $m\times n_r$ membership matrix for the $n_r$ nodes at level $r$.
+The model is
+\begin{align*}
+ [\bb z\given\bb\beta,\bb v^{(1)},\ldots,\bb v^{(R)}]
+ &\sim N_m\left(\bb X\bb\beta+\sum_{r=1}^R\bb Z_r\bb v^{(r)},\bb D\right),\\
+ [\bb v^{(r)}\given\sigma_r^2]
+ &\sim N_{n_r}(\bb 0,\sigma_r^2\bb I_{n_r}).
+\end{align*}
+We use $[\bb\beta]\sim N_j(\bb 0,k^2\bb I_j)$ and $[\sigma_r^2]\sim IG(a_r,b_r)$.
+The inputs are standardized before fitting, with defaults $k^2=10^4$, $a_r=3$, and $b_r=0.6$.
+
+\paragraph{Full conditional distribution of the fixed and random effects.}
+These effects are sampled in a block.
+Set
+\[
+ \bb\gamma=\begin{pmatrix}\bb\beta^\top & (\bb v^{(1)})^\top & \cdots & (\bb v^{(R)})^\top\end{pmatrix}^\top,
+ \qquad \bb Z=\begin{pmatrix}\bb X & \bb Z_1 & \cdots & \bb Z_R\end{pmatrix}.
+\]
+Writing $q=j+\sum_{r=1}^R n_r$, the prior is $[\bb\gamma\given\sigma_1^2,\ldots,\sigma_R^2]\sim N_q(\bb 0,\bb\Lambda_\gamma^{-1})$, where
+\[
+ \bb\Lambda_\gamma=
+ \begin{pmatrix}
+  \bb I_j/k^2 & \bb 0 & \cdots & \bb 0\\
+  \bb 0 & \bb I_{n_1}/\sigma_1^2 & & \bb 0\\
+  \vdots & & \ddots & \vdots\\
+  \bb 0 & \bb 0 & \cdots & \bb I_{n_R}/\sigma_R^2
+ \end{pmatrix}.
+\]
+Combining the likelihood and prior gives
+\[
+ \pi(\bb\gamma\given\cdots)\propto
+ \exp\left\{-\frac12(\bb z-\bb Z\bb\gamma)^\top\bb D^{-1}(\bb z-\bb Z\bb\gamma)
+             -\frac12\bb\gamma^\top\bb\Lambda_\gamma\bb\gamma\right\}.
+\]
+Completing the square yields
+\[
+ [\bb\gamma\given\sigma_1^2,\ldots,\sigma_R^2,data]\sim
+ N_q\left(\bb P_\gamma^{-1}\bb Z^\top\bb D^{-1}\bb z,\bb P_\gamma^{-1}\right),
+ \qquad \bb P_\gamma=\bb Z^\top\bb D^{-1}\bb Z+\bb\Lambda_\gamma.
+\]
+
+\paragraph{Full conditional distributions of $\sigma_1^2,\ldots,\sigma_R^2$.}
+For each level,
+\[
+ [\sigma_r^2\given\bb v^{(r)}]\sim
+ IG\left(\frac{n_r}{2}+a_r,\frac{(\bb v^{(r)})^\top\bb v^{(r)}}{2}+b_r\right).
+\]
+The code draws the reciprocal precision from the equivalent gamma distribution.
+
+\section*{Connection to the implementation}
+The arguments \texttt{y} and \texttt{d.var} contain $\bb z$ and the diagonal of $\bb D$.
+For a domain without a usable input, its likelihood term is omitted.
+Equivalently, the matrix calculations use zero precision and a finite placeholder for that domain.
+Its random effect is still sampled and remains in the variance update.
+
+The Cholesky factor \texttt{U} satisfies $\bb U^\top\bb U=\bb P_\beta$ in \texttt{fh.R} and $\bb U^\top\bb U=\bb P_\gamma$ in \texttt{ts.R}.
+Both samplers use triangular solves to draw from the normal conditionals without forming a matrix inverse.
+The taxonomy wrapper transforms posterior draws back to the input scale.
+\end{document}

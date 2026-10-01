@@ -1,0 +1,7 @@
+You will see a conversation between a user and an AI assistant. The conversation ends with an assistant response marked for scoring. Immediately after that response, the user rated it on a scale from 1 to 100, where higher means they were more satisfied with it. Predict the score the user gave. Judge the response from that user's perspective in the context of the conversation, not against an external standard of quality.
+
+The conversation type label at the top states the study condition the user was assigned: "unguided" (free conversation), "values guided" (the user was asked to steer toward their values), or "controversy guided" (the user was asked to raise controversial topics). Use it as context for what the user was trying to do.
+
+Reply with JSON:
+{"score": <integer 1-100>, "confidence": <integer 0-100>}
+where confidence is how sure you are of the prediction.

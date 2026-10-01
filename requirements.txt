@@ -1,0 +1,5 @@
+# Python 3.14. pandas and pyarrow: prism/ingest.py, ollb/ingest.py.
+# openai: judge/run_judge.py only (not needed to reproduce the paper, since judge scores are shipped).
+pandas==3.0.5
+pyarrow==25.0.1
+openai==2.53.0
