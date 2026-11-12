@@ -118,3 +118,9 @@ Each replicate is seeded (`seed 100 + r`), so a shorter run reproduces the first
 
 - Runs with `REPS` under 100 write caches with a `smoke_` prefix, which the figure and table scripts do not read. Rename or copy them to compare against the full results.
 - `paper_selection.R` and `paper_single_sample.R` always write to `../data`, ignoring `OUT`, and `paper_single_sample.R` has no shortened mode.
+
+### Cross-validation fold weights
+
+Updated November 11, 2026: `cv_compare` scales each record's original weight by its domain's full-sample count divided by the actual held-out or training-subset count. Under stratified SRSWOR this gives `N_i/n_i` for the subset. Equal folds retain the previous `K` and `K/(K-1)` factors; uneven folds now use their actual inclusion fractions. Original unequal weights are preserved before this fold adjustment. The equal-fold score formula is unchanged, and uneven folds emit a warning about that remaining approximation.
+
+Validation: `Rscript -e 'source("R/run.R"); source("tests/helper.R"); source("tests/test_validation.R")'` from `code/` passes, including equal and uneven domain counts. The uneven-fold regression check fails against the preceding implementation. A local replay of the paper benchmark sample (932 records, 34 domains, five shared folds) verifies held-out/training weights and reproduces the previously checked R/Python model inputs and DB-CV scores without a weight adapter; saved posterior draws were reused after checking their inputs. Existing simulations, tables, and figures have not been regenerated with this correction.

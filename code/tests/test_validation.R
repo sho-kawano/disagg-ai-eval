@@ -83,3 +83,40 @@ check("cv_debias: cross-validation produces finite corrected scores",
       all(is.finite(cv_debias(res))))
 check_equal("cv_debias: uses covariance returned by cv_compare",
             as.numeric(cv_debias(res) - res$domain_score), c(1 / 8, -5 / 24))
+
+# ---- 5. Actual fold counts preserve design weights and training records. ----
+pop_fold <- new_population(data.frame(topic = rep(c("a", "b"), c(35, 80)),
+                                      y = seq_len(115) %% 7, judge = seq_len(115) %% 11),
+                           domain_vars = "topic")
+for (counts in list(c(6, 9), c(7, 8))) {
+  sample_fold <- pop_fold$units[c(seq_len(counts[1]), 35 + seq_len(counts[2])), ]
+  sample_fold$Npop <- rep(c(35, 80), counts)
+  sample_fold$w <- rep(c(35, 80) / counts, counts)
+  assigned <- cv_folds(sample_fold, K = 3, seed = 44)
+  calls <- list()
+  record <- function(pop, sub, control) {
+    calls[[length(calls) + 1L]] <<- sub
+    cv_models("greg")$greg(pop, sub, control)
+  }
+  # An uneven-fold warning is expected for (7,8), but not (6,9).
+  warned <- FALSE
+  result <- withCallingHandlers(
+    cv_compare(pop_fold, sample_fold, list(record = record), K = 3, seed = 44),
+    warning = function(w) {
+      if (grepl("Unequal fold sizes", conditionMessage(w))) {
+        warned <<- TRUE
+        invokeRestart("muffleWarning")
+      }
+    })
+  correct <- length(calls) == 4 && identical(calls[[4]]$w, sample_fold$w)
+  for (k in 1:3) {
+    train <- calls[[k]]
+    correct <- correct && identical(train$unit, assigned$unit[assigned$fold != k])
+    for (domain in levels(sample_fold$domain)) {
+      keep <- train$domain == domain
+      correct <- correct && all(abs(train$w[keep] - train$Npop[keep] / sum(keep)) < 1e-12)
+    }
+  }
+  check(paste0("cv_compare: complement records and actual weights, n=(", paste(counts, collapse = ","), ")"),
+        correct && identical(warned, any(counts %% 3 != 0)))
+}

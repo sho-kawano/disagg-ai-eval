@@ -23,14 +23,25 @@ cv_compare <- function(pop, sample, models, K = 5, control = fh_control(),
   if (is.null(q)) q <- pop$domains$N / sum(pop$domains$N)
   sample <- cv_folds(sample, K, seed)
 
+  # Inverse fold inclusion probabilities use actual within-domain counts.
+  n_full <- table(sample$domain)
+  if (any(n_full %% K != 0))
+    warning("Unequal fold sizes: using actual subset weights; equal-fold centering remains approximate.")
+  fold_subset <- function(keep) {
+    sub <- sample[keep, ]
+    n_sub <- table(sub$domain)
+    ids <- as.character(sub$domain)
+    sub$w <- sub$w * as.numeric(n_full[ids] / n_sub[ids])
+    sub
+  }
+
   heldout <- matrix(NA_real_, M, K, dimnames = list(as.character(domains), NULL))
   train <- lapply(models, function(f)
     matrix(NA_real_, M, K, dimnames = list(as.character(domains), NULL)))
   for (k in seq_len(K)) {
-    # Adjust weights for fold inclusion probabilities (Algorithm 1).
-    test <- transform(sample[sample$fold == k, ], w = w * K)
+    test <- fold_subset(sample$fold == k)
     heldout[, k] <- subset_direct_points(test, domains)
-    sub <- transform(sample[sample$fold != k, ], w = w * K / (K - 1))
+    sub <- fold_subset(sample$fold != k)
     for (m in names(models)) train[[m]][, k] <- models[[m]](pop, sub, control)$point
   }
   domain_score <- sapply(names(models), function(m) adjusted_score(heldout, train[[m]]))
