@@ -2,6 +2,8 @@
 
 Replication code and data for [*Prediction-Powered Smoothing and Validation for Disaggregated AI Evaluation*](https://arxiv.org/abs/2609.20758) (Kawano, Li and Parker, 2026).
 
+This repository contains the paper's R implementation and replication materials. The **Python implementation** of FH, PP-S, PP-TS, and DB-CV is available in [**disagg_eval**](https://github.com/sho-kawano/disagg_eval).
+
 How can we reliably evaluate AI systems across many small domains when human labels are scarce? This paper connects disaggregated AI evaluation with survey sampling: combining model predictions, limited human labels, and information across related domains to improve estimates and quantify uncertainty. The experiments cover LLM benchmarking with Open LLM Leaderboard data and human–AI conversations from PRISM.
 
 The code implements direct, PPI, and GREG estimates; Fay–Herriot and taxonomy smoothing; and design-based cross-validation with covariance-based debiasing.
